@@ -25,23 +25,32 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         // Macro implementation that performs the source transformation of a macro.
+        .target(name: "PyWrapperInfo"),
         .macro(
             name: "PySwiftGenerators",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-                "PyWrapper"
+                "PyWrapper",
+                "PyWrapperInfo"
             ]
         ),
         .target(
             name: "PyWrapper",
             dependencies: [
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                "PyWrapperInfo"
             ]
         ),
         // Library that exposes a macro as part of its API, which is used in client programs.
-        .target(name: "PySwiftWrapper", dependencies: ["PySwiftGenerators"]),
+        .target(
+            name: "PySwiftWrapper",
+            dependencies: [
+                "PySwiftGenerators",
+                "PyWrapperInfo"
+            ]
+        ),
 
         // A client of the library, which is able to use the macro in its own code.
         .executableTarget(name: "PySwiftKitMacrosClient", dependencies: ["PySwiftWrapper"]),

@@ -5,14 +5,17 @@
 //  Created by CodeBuilder on 01/05/2025.
 //
 import SwiftSyntax
+import PyWrapperInfo
 
 public class PyClass {
     let name: String
     var initDecl: InitializerDeclSyntax?
+    var bases: [PyClassBase]
     var unretained: Bool
     
-    public init(name: String, cls: ClassDeclSyntax, unretained: Bool = false) {
+    public init(name: String, cls: ClassDeclSyntax, bases: [PyClassBase] = [], unretained: Bool = false) {
         self.name = name
+        self.bases = bases
         self.unretained = unretained
         let inits = cls.memberBlock.members.compactMap { member in
             let decl = member.decl
@@ -36,7 +39,21 @@ extension PyClass {
             tp_init()
             tp_dealloc()
             
-            PyMappingMethodsGenerator(cls: name).variDecl
+            for base in self.bases {
+                switch base {
+                case .async:
+                    PyAsyncMethodsGenerator(cls: name).variDecl
+                case .sequence:
+                    ""
+                case .mapping:
+                    PyMappingMethodsGenerator(cls: name).variDecl
+                case .buffer:
+                    ""
+                case .number:
+                    ""
+                }
+            }
+            
         }
     }
 }

@@ -137,7 +137,13 @@ extension ClosureSignatureSyntax {
         .init(parameterClause: .parameterClause(.void))
     }
     
-
+    static var getset_getter: Self {
+        .init(parameterClause: .parameterClause(.getset_getter), returnClause: .pyPointer)
+    }
+    
+    static var getset_setter: Self {
+        .init(parameterClause: .parameterClause(.getset_setter), returnClause: .int32)
+    }
 }
 
 extension ClosureParameterClauseSyntax {
@@ -305,5 +311,14 @@ extension ClosureParameterClauseSyntax {
         "_"
     }}
     
-
+    static var getset_getter: Self { .new {
+        __self__
+        "clossure"
+    }}
+    
+    static var getset_setter: Self { .new {
+        __self__
+        "clossure"
+        "newValue"
+    }}
 }

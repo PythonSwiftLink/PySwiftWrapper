@@ -42,7 +42,7 @@ struct PyMappingMethodsGenerator {
 		
 		return .init(
 			leadingTrivia: .lineComment("// #### PyMappingMethods ####").appending(.newlines(2) as Trivia),
-			modifiers: [.fileprivate, .static], .var,
+			modifiers: [.static], .var,
 			name: .init(stringLiteral: "tp_as_mapping"),
 			type: .init(type: TypeSyntax(stringLiteral: "PyMappingMethods")),
 			initializer: .init(value: call)
@@ -113,9 +113,9 @@ extension PyMappingMethodsGenerator {
         let type: PyType_typedefs = .objobjargproc
         
         func closureExpr() -> ClosureExprSyntax {
-            .objobjproc {
+            .objobjargproc {
                 """
-                if let s {
+                if let __self__ {
                     \(raw: unPackSelf(cls)).__setitem__(x, y)
                 } else { 0 }
                 """

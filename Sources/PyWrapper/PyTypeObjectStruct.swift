@@ -7,15 +7,17 @@
 
 import Foundation
 import SwiftSyntax
-
+import PyWrapperInfo
 
 public struct PyTypeObjectStruct {
     
     let name: String
+    let bases: [PyClassBase]
     let unretained: Bool
     
-    public init(name: String, unretained: Bool = false) {
+    public init(name: String, bases: [PyClassBase], unretained: Bool = false) {
         self.name = name
+        self.bases = bases
         self.unretained = unretained
     }
     
@@ -58,15 +60,15 @@ extension PyTypeObjectStruct {
         case .tp_setattr:
             nil
         case .tp_as_async:
-            nil
+            bases.contains(.async) ? ".init(&\(name).\(label))".expr : nil
         case .tp_repr:
             nil
         case .tp_as_number:
-            nil
+            bases.contains(.number) ? ".init(&\(name).\(label))".expr : nil
         case .tp_as_sequence:
-            nil
+            bases.contains(.sequence) ? ".init(&\(name).\(label))".expr : nil
         case .tp_as_mapping:
-            ".init(&\(name).\(label))".expr
+            bases.contains(.mapping) ? ".init(&\(name).\(label))".expr : nil
         case .tp_hash:
             nil
         case .tp_call:

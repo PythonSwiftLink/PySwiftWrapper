@@ -62,7 +62,7 @@ public struct PyMethodDefGenerator {
 
 extension PyMethodDefGenerator {
     
-    fileprivate func arguments(canThrow: Bool = true) -> LabeledExprListSyntax {
+    fileprivate func _arguments(canThrow: Bool = true) -> LabeledExprListSyntax {
         let count = parameters.count
         let label: TokenSyntax = switch count {
         case 0: "noArgs"
@@ -84,10 +84,41 @@ extension PyMethodDefGenerator {
         LabeledExprSyntax(leadingTrivia: .newline, label: "ml_meth", colon: .colonToken(), expression: closure)
     }}
     
+    fileprivate func methodName(_ count: Int) -> MemberAccessExprSyntax {
+        let label: TokenSyntax = switch count {
+        case 0: 
+            is_static ? "staticNoArgs" : "noArgs"
+        case 1:
+            is_static ? "staticOneArg" : "oneArg"
+        default:
+            is_static ? "staticWithArgs" : "withArgs"
+        }
+        return .init(name: label)
+    }
+    
+    fileprivate func arguments(canThrow: Bool = true) -> LabeledExprListSyntax {
+        let count = parameters.count
+        let label: TokenSyntax = switch count {
+        case 0: "noArgs"
+        case 1: "oneArg"
+        default: "withArgs"
+        }
+        
+        let closure = PyClossure(
+            par_count: count,
+            callExpr: call,
+            argsThrows: parameters.canThrow,
+            funcThrows: f.throws
+        ).output
+    return .init {
+        LabeledExprSyntax(leadingTrivia: .newline ,label: "name", colon: .colonToken(), expression: f.name.text.makeLiteralSyntax())
+        LabeledExprSyntax(leadingTrivia: .newline, label: "ml_meth", colon: .colonToken(), expression: closure)
+    }}
+    
     public var method: FunctionCallExprSyntax {
         
         return FunctionCallExprSyntax(
-            calledExpression: "PyMethodDef".expr,
+            calledExpression: methodName(parameters.count),
             leftParen: .leftParenToken(),
             arguments: arguments(canThrow: canThrow),
             rightParen: .rightParenToken(leadingTrivia: .newline)

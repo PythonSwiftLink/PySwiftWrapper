@@ -10,11 +10,24 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
 
+struct PyMethodAttribute: PeerMacro {
+    static func expansion(of node: SwiftSyntax.AttributeSyntax, providingPeersOf declaration: some SwiftSyntax.DeclSyntaxProtocol, in context: some SwiftSyntaxMacros.MacroExpansionContext) throws -> [SwiftSyntax.DeclSyntax] {
+        []
+    }
+}
+
+struct PyPropertyAttribute: PeerMacro {
+    static func expansion(of node: SwiftSyntax.AttributeSyntax, providingPeersOf declaration: some SwiftSyntax.DeclSyntaxProtocol, in context: some SwiftSyntaxMacros.MacroExpansionContext) throws -> [SwiftSyntax.DeclSyntax] {
+        []
+    }
+}
+
 @main
 struct PySwiftGeneratorsPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         PySwiftFuncWrapper.self,
-        PySwiftMethodWrapper.self,
+        PyPropertyAttribute.self,
+        PyMethodAttribute.self,
         PySwiftClassGenerator.self,
         PySwiftModuleGenerator.self
     ]

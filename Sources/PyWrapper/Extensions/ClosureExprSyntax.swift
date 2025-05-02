@@ -129,4 +129,12 @@ extension ClosureExprSyntax {
     static func void(@CodeBlockItemListBuilder itemsBuilder: () -> CodeBlockItemListSyntax) -> Self {
         .init(signature: .void, statementsBuilder: itemsBuilder)
     }
+    
+    static func getset_getter(@CodeBlockItemListBuilder itemsBuilder: () -> CodeBlockItemListSyntax) -> Self {
+        .init(signature: .getset_getter, statementsBuilder: itemsBuilder)
+    }
+    
+    static func getset_setter(@CodeBlockItemListBuilder itemsBuilder: () -> CodeBlockItemListSyntax) -> Self {
+        .init(signature: .getset_setter, statementsBuilder: itemsBuilder)
+    }
 }
