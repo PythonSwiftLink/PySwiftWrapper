@@ -22,13 +22,25 @@ struct PyPropertyAttribute: PeerMacro {
     }
 }
 
+struct PeerDummy: PeerMacro {
+    static func expansion(of node: AttributeSyntax, providingPeersOf declaration: some DeclSyntaxProtocol, in context: some MacroExpansionContext) throws -> [DeclSyntax] {
+        []
+    }
+}
+
 @main
 struct PySwiftGeneratorsPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         PySwiftFuncWrapper.self,
         PyPropertyAttribute.self,
         PyMethodAttribute.self,
+        AttachedTestMacro.self,
         PySwiftClassGenerator.self,
-        PySwiftModuleGenerator.self
+        PySwiftModuleGenerator.self,
+        ExtractPySwiftObject.self,
+        PyCallbackGenerator.self,
+        PyCallFiller.self,
+        PeerDummy.self,
+        //PyMethodGenerator.self
     ]
 }

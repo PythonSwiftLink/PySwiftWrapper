@@ -12,10 +12,12 @@ public class PyMethods {
     
     var cls: String
     var input: [FunctionDeclSyntax]
+    let module_or_class: Bool
     
-    public init(cls: String, input: [FunctionDeclSyntax]) {
+    public init(cls: String, input: [FunctionDeclSyntax], module_or_class: Bool = false) {
         self.cls = cls
         self.input = input
+        self.module_or_class = module_or_class
     }
     
 }
@@ -26,7 +28,7 @@ extension PyMethods {
         
         return .init {
             for f in input {
-                ArrayElementSyntax(leadingTrivia: .newline, expression: PyMethodDefGenerator(cls: cls ,f: f).method)
+                ArrayElementSyntax(leadingTrivia: .newline, expression: PyMethodDefGenerator(target: cls ,f: f, module_or_class: module_or_class).method)
             }
             ArrayElementSyntax(leadingTrivia: .newline, expression: "PyMethodDef()".expr)
         }

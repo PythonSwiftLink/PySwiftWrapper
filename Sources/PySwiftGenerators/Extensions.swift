@@ -13,6 +13,10 @@ enum PyMethodDefFlag: String {
     
 }
 
+extension String {
+    var typeSyntax: TypeSyntax { .init(stringLiteral: self) }
+}
+
 extension FunctionCallExprSyntax {
 //    static func pyMethodDef() -> FunctionCallExprSyntax {
 //        

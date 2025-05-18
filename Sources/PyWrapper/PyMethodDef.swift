@@ -16,9 +16,11 @@ public struct PyMethodDefGenerator {
     let ftype: TypeSyntax
     let canThrow: Bool
     let is_static: Bool
+    let module_or_class: Bool
     
-    init(cls: String, f: FunctionDeclSyntax) {
+    public init(target: String, f: FunctionDeclSyntax, module_or_class: Bool = false) {
         self.f = f
+        self.module_or_class = module_or_class
         let parameters = f.signature.parameterClause.parameters.map(\.self)
         let nargs = parameters.count
         let multi = nargs > 1
@@ -31,25 +33,31 @@ public struct PyMethodDefGenerator {
         
         self.parameters = parameters
         
-        canThrow = f.signature.effectSpecifiers?.throwsSpecifier != nil || parameters.canThrow
+        canThrow = f.signature.effectSpecifiers?.throwsClause?.throwsSpecifier != nil || parameters.canThrow
         is_static = f.modifiers.contains { mod in
             mod.name.text == "static"
         }
-        
-        let call_member = MemberAccessExprSyntax(
-            base: is_static ? cls.expr : "UnPackPySwiftObject(with: __self__, as: \(cls).self)".expr,
+        let type: ExprSyntax = target.expr
+        let call: ExprSyntaxProtocol = MemberAccessExprSyntax(
+            base: (is_static || module_or_class) ? type : "Unmanaged<\(raw: type)>.fromOpaque(\(raw: "__self__").pointee.swift_ptr).takeUnretainedValue()",
             name: f.name
         )
+        //FunctionParameterSyntax.init(stringLiteral: "").firstName.text
         
         self.call = .init(
-            calledExpression: call_member,
+            calledExpression: call,
             leftParen: .leftParenToken(),
             arguments: .init {
                 for (i, parameter) in f.signature.parameterClause.parameters.lazy.enumerated() {
-                    if let s_name = parameter.secondName, s_name.text == "_" {
-                        LabeledExprSyntax(leadingTrivia: .newline, expression: ExprSyntax(stringLiteral: handleTypes(parameter.type, nil)))
+                    if let s_name = parameter.secondName, s_name.trimmed.text == "_" {
+                        LabeledExprSyntax(leadingTrivia: .newline, expression: handleTypes(parameter.type, nil))
                     } else {
-                        LabeledExprSyntax(leadingTrivia: .newline,label: parameter.firstName, colon: .colonToken(), expression: ExprSyntax(stringLiteral: handleTypes(parameter.type, multi ? i : nil)))
+                        LabeledExprSyntax(leadingTrivia: .newline,label: parameter.firstName, colon: .colonToken(), expression: handleTypes(
+                            parameter.type,
+                            multi ? i : nil,
+                            target: parameter.firstName.text
+                        )
+                        )
                     }
                 }
             },
@@ -74,7 +82,15 @@ extension PyMethodDefGenerator {
             par_count: count,
             callExpr: call,
             argsThrows: parameters.canThrow,
-            funcThrows: f.throws
+            funcThrows: f.throws,
+            ex_parameters: parameters.enumerated().compactMap({ i, p in
+                let many = count > 1
+                let ex_label = many ? "__args__[\(i)]" : "__arg__"
+                return switch p.type.as(TypeSyntaxEnum.self) {
+                case .functionType(let functionTypeSyntax): "let _\((p.secondName ?? p.firstName).text) = \(ex_label)"
+                default: nil
+                }
+            })
         ).output
     return .init {
         LabeledExprSyntax(leadingTrivia: .newline ,label: label, colon: .colonToken(), expression: f.name.text.makeLiteralSyntax())
@@ -85,30 +101,51 @@ extension PyMethodDefGenerator {
     }}
     
     fileprivate func methodName(_ count: Int) -> MemberAccessExprSyntax {
-        let label: TokenSyntax = switch count {
-        case 0: 
-            is_static ? "staticNoArgs" : "noArgs"
-        case 1:
-            is_static ? "staticOneArg" : "oneArg"
-        default:
-            is_static ? "staticWithArgs" : "withArgs"
+        let label: TokenSyntax = if module_or_class {
+            switch count {
+            case 0:
+                "moduleNoArgs"
+            case 1:
+                "moduleOneArg"
+            default:
+                "moduleWithArgs"
+            }
+        } else {
+            switch count {
+            case 0:
+                is_static ? "staticNoArgs" : "noArgs"
+            case 1:
+                is_static ? "staticOneArg" : "oneArg"
+            default:
+                is_static ? "staticWithArgs" : "withArgs"
+            }
         }
         return .init(name: label)
     }
     
     fileprivate func arguments(canThrow: Bool = true) -> LabeledExprListSyntax {
         let count = parameters.count
-        let label: TokenSyntax = switch count {
-        case 0: "noArgs"
-        case 1: "oneArg"
-        default: "withArgs"
-        }
         
         let closure = PyClossure(
             par_count: count,
             callExpr: call,
             argsThrows: parameters.canThrow,
-            funcThrows: f.throws
+            funcThrows: f.throws,
+            no_self: module_or_class || is_static,
+            return_type: f.signature.returnClause?.type,
+            ex_parameters: parameters.enumerated().compactMap({ i, p in
+                let many = count > 1
+                let ex_label = many ? "__args__[\(i)]" : "__arg__"
+                return switch p.type.as(TypeSyntaxEnum.self) {
+                case .functionType(_): "let _\((p.secondName ?? p.firstName).text) = \(ex_label)"
+                case .attributedType(let attributedType):
+                    switch attributedType.baseType.as(TypeSyntaxEnum.self) {
+                    case .functionType(_): "let _\((p.secondName ?? p.firstName).text) = \(ex_label)"
+                    default: nil
+                    }
+                default: nil
+                }
+            })
         ).output
     return .init {
         LabeledExprSyntax(leadingTrivia: .newline ,label: "name", colon: .colonToken(), expression: f.name.text.makeLiteralSyntax())

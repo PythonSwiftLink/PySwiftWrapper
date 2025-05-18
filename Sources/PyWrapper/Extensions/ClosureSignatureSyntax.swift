@@ -9,6 +9,7 @@ import SwiftSyntax
 import SwiftSyntaxBuilder
 
 fileprivate extension ReturnClauseSyntax {
+    static var void: Self { .init(type: TypeSyntax(stringLiteral: "Void"))}
     static var pyPointer: Self { .init(type: TypeSyntax(stringLiteral: "PyPointer?"))}
     static var optPyPointer: Self { .init(type: TypeSyntax(stringLiteral: "PyPointer?"))}
     static var int32: Self { .init(type: TypeSyntax(stringLiteral: "Int32"))}
@@ -17,132 +18,274 @@ fileprivate extension ReturnClauseSyntax {
 }
 
 extension ClosureSignatureSyntax {
-    static var allocfunc: Self {
-        .init(parameterClause: .parameterClause(.allocfunc), returnClause: .pyPointer)
+    static func create(
+        returnClause: ReturnClauseSyntax? = nil,
+        @ClosureParameterListBuilder itemsBuilder: () -> ClosureParameterListSyntax
+    ) -> Self {
+        .init(parameterClause: .parameterClause(.new(itemsBuilder: itemsBuilder)), returnClause: returnClause)
+    }
+}
+
+extension ClosureSignatureSyntax {
+    static func allocfunc(_ type: ClosureParameterSyntax, _ size: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            type
+            size
+        }
     }
     
-    static var destructor: Self {
-        .init(parameterClause: .parameterClause(.destructor), returnClause: nil)
+    static func destructor(_ s: ClosureParameterSyntax) -> Self {
+        .create {
+            s
+        }
     }
     
-    static var freefunc: Self {
-        .init(parameterClause: .parameterClause(.freefunc), returnClause: nil)
+    static func freefunc(_ raw: ClosureParameterSyntax) -> Self {
+        .create {
+            raw
+        }
     }
     
-    static var traverseproc: Self {
-        .init(parameterClause: .parameterClause(.traverseproc), returnClause: .int32)
+    static func traverseproc(_ s: ClosureParameterSyntax, _ visit: ClosureParameterSyntax, _ raw: ClosureParameterSyntax ) -> Self {
+        .create(returnClause: .int32) {
+            [s, visit, raw]
+        }
     }
     
-    static var newfunc: Self {
-        .init(parameterClause: .parameterClause(.newfunc), returnClause: .pyPointer)
+    static func newfunc(_ s: ClosureParameterSyntax, _ args: ClosureParameterSyntax, _ kw: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            [s, args, kw]
+        }
     }
     
-    static var initproc: Self {
-        .init(parameterClause: .parameterClause(.initproc), returnClause: .int32)
+    static func initproc(_ s: ClosureParameterSyntax, _ args: ClosureParameterSyntax, _ kw: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int32) {
+            [s, args, kw]
+        }
     }
     
-    static var reprfunc: Self {
-        .init(parameterClause: .parameterClause(.reprfunc), returnClause: .pyPointer)
+    static func reprfunc(_ s: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            s
+        }
     }
     
-    static var getattrfunc: Self {
-        .init(parameterClause: .parameterClause(.getattrfunc), returnClause: .pyPointer)
+//    static func getattrfunc(_ s: ClosureParameterSyntax) -> Self {
+//        .create(returnClause: .pyPointer) {
+//            s
+//        }
+//    }
+//    
+//    static func setattrfunc(_ s: ClosureParameterSyntax) -> Self {
+//        .create(returnClause: .int32) {
+//            s
+//        }
+//    }
+    
+    static func getattrofunc(_ s: ClosureParameterSyntax, _ key: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            [s, key]
+        }
     }
     
-    static var setattrfunc: Self {
-        .init(parameterClause: .parameterClause(.setattrfunc), returnClause: .int32)
+    static func setattrofunc(_ s: ClosureParameterSyntax, _ key: ClosureParameterSyntax, _ value: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int32) {
+            [s, key, value]
+        }
     }
     
-    static var getattrofunc: Self {
-        .init(parameterClause: .parameterClause(.getattrofunc), returnClause: .pyPointer)
+    static func descrgetfunc(_ s: ClosureParameterSyntax, _ x: ClosureParameterSyntax, _ y: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            [s, x, y]
+        }
     }
     
-    static var setattrofunc: Self {
-        .init(parameterClause: .parameterClause(.setattrofunc), returnClause: .int32)
+    static func descrsetfunc(_ s: ClosureParameterSyntax, _ key: ClosureParameterSyntax, _ value: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int32) {
+            [s, key, value]
+        }
     }
     
-    static var descrgetfunc: Self {
-        .init(parameterClause: .parameterClause(.descrgetfunc), returnClause: .pyPointer)
+    static func hashfunc(_ s: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int) {
+            s
+        }
     }
     
-    static var descrsetfunc: Self {
-        .init(parameterClause: .parameterClause(.descrsetfunc), returnClause: .int32)
+    static func richcmpfunc(_ l: ClosureParameterSyntax, _ r: ClosureParameterSyntax, _ cmp: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int32) {
+            [l, r, cmp]
+        }
     }
     
-    static var hashfunc: Self {
-        .init(parameterClause: .parameterClause(.hashfunc), returnClause: .int)
+    static func getiterfunc(_ s: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            s
+        }
     }
     
-    static var richcmpfunc: Self {
-        .init(parameterClause: .parameterClause(.richcmpfunc), returnClause: .pyPointer)
+    static func iternextfunc(_ s: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            s
+        }
     }
     
-    static var getiterfunc: Self {
-        .init(parameterClause: .parameterClause(.getiterfunc), returnClause: .pyPointer)
+    static func lenfunc(_ s: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int) {
+            s
+        }
     }
     
-    static var iternextfunc: Self {
-        .init(parameterClause: .parameterClause(.iternextfunc), returnClause: .pyPointer)
+    static func getbufferproc(_ s: ClosureParameterSyntax, _ buffer: ClosureParameterSyntax, _ size: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int32) {
+            [s, buffer, size]
+        }
     }
     
-    static var lenfunc: Self {
-        .init(parameterClause: .parameterClause(.lenfunc), returnClause: .int)
+    static func releasebufferproc(
+        _ s: ClosureParameterSyntax,
+        _ buffer: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .void) {
+            [s, buffer]
+        }
     }
     
-    static var getbufferproc: Self {
-        .init(parameterClause: .parameterClause(.getbufferproc), returnClause: .int32)
+    static func inquiry(_ s: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int32) {
+            s
+        }
     }
     
-    static var releasebufferproc: Self {
-        .init(parameterClause: .parameterClause(.releasebufferproc))
+    static func unaryfunc(_ s: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            s
+        }
     }
     
-    static var inquiry: Self {
-        .init(parameterClause: .parameterClause(.inquiry), returnClause: .int32)
+    static func binaryfunc(
+        _ s: ClosureParameterSyntax,
+        _ o: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .pyPointer) {
+            [s, o]
+        }
     }
     
-    static var unaryfunc: Self {
-        .init(parameterClause: .parameterClause(.unaryfunc), returnClause: .pyPointer)
+    static func ternaryfunc(
+        _ s: ClosureParameterSyntax,
+        _ o: ClosureParameterSyntax,
+        _ kw: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .pyPointer) {
+            [s, o, kw]
+        }
     }
     
-    static var binaryfunc: Self {
-        .init(parameterClause: .parameterClause(.binaryfunc), returnClause: .pyPointer)
+    static func ssizeargfunc(
+        _ s: ClosureParameterSyntax,
+        _ i: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .pyPointer) {
+            [s, i]
+        }
     }
     
-    static var ternaryfunc: Self {
-        .init(parameterClause: .parameterClause(.ternaryfunc), returnClause: .pyPointer)
+    static func ssizeobjargproc(
+        _ s: ClosureParameterSyntax,
+        _ i: ClosureParameterSyntax,
+        _ o: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .int32) {
+            [s, i, o]
+        }
     }
     
-    static var ssizeargfunc: Self {
-        .init(parameterClause: .parameterClause(.ssizeargfunc), returnClause: .pyPointer)
+    static func objobjproc(
+        _ s: ClosureParameterSyntax,
+        _ x: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .int32) {
+            [s, x]
+        }
     }
     
-    static var ssizeobjargproc: Self {
-        .init(parameterClause: .parameterClause(.ssizeobjargproc), returnClause: .int32)
+    static func objobjargproc(
+        _ s: ClosureParameterSyntax,
+        _ x: ClosureParameterSyntax,
+        _ y: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .int32) {
+            [s, x, y]
+        }
     }
     
-    static var objobjproc: Self {
-        .init(parameterClause: .parameterClause(.objobjproc), returnClause: .int32)
+    static func sendfunc(
+        _ s: ClosureParameterSyntax,
+        _ args: ClosureParameterSyntax,
+        _ kw: ClosureParameterSyntax
+    ) -> Self {
+        .create(returnClause: .pySendResult) {
+            [s, args, kw]
+        }
     }
     
-    static var objobjargproc: Self {
-        .init(parameterClause: .parameterClause(.objobjargproc), returnClause: .int32)
-    }
-    
-    static var sendfunc: Self {
-        .init(parameterClause: .parameterClause(.sendfunc), returnClause: .pySendResult)
-    }
-    
-    static var void: Self {
+    static func void(_ s: ClosureParameterSyntax) -> Self {
         .init(parameterClause: .parameterClause(.void))
     }
     
-    static var getset_getter: Self {
-        .init(parameterClause: .parameterClause(.getset_getter), returnClause: .pyPointer)
+    static func getset_getter(_ s: ClosureParameterSyntax,_ raw: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .pyPointer) {
+            s
+            raw
+        }
     }
     
-    static var getset_setter: Self {
-        .init(parameterClause: .parameterClause(.getset_setter), returnClause: .int32)
+    static func getset_setter(_ s: ClosureParameterSyntax, _ newValue: ClosureParameterSyntax, _ raw: ClosureParameterSyntax) -> Self {
+        .create(returnClause: .int32) {
+            s
+            newValue
+            raw
+        }
+    }
+}
+
+extension ClosureSignatureSyntax.ParameterClause {
+    static func new(@ClosureParameterListBuilder itemsBuilder: () -> ClosureParameterListSyntax) -> Self {
+        .parameterClause(.new(itemsBuilder: itemsBuilder))
+    }
+}
+
+
+extension ClosureSignatureSyntax {
+    
+    
+    
+    static func _inquiry(_ s: ClosureParameterSyntax) -> Self {
+        .init(parameterClause: .new {
+            s
+        }, returnClause: .int32)
+    }
+    
+    static func _unaryfunc(_ s: ClosureParameterSyntax) -> Self {
+        .init(parameterClause: .parameterClause(.new {
+            s
+        }), returnClause: .pyPointer)
+    }
+    
+    static func _binaryfunc(_ s: ClosureParameterSyntax,_ o: ClosureParameterSyntax) -> Self {
+        .init(parameterClause: .parameterClause(.new {
+            s
+            o
+        }), returnClause: .pyPointer)
+    }
+    
+    static func _ternaryfunc(_ s: ClosureParameterSyntax,_ o: ClosureParameterSyntax,_ kw: ClosureParameterSyntax) -> Self {
+        .init(parameterClause: .parameterClause(.new {
+            s
+            o
+            kw
+        }), returnClause: .pyPointer)
     }
 }
 
@@ -165,6 +308,13 @@ extension ClosureParameterClauseSyntax {
         .init(parameters: .init(itemsBuilder: itemsBuilder))
     }
 }
+
+
+//extension ParameterClauseSyntax {
+//    static func new(@ClosureParameterListBuilder itemsBuilder: () -> ClosureParameterListSyntax) -> Self {
+//        
+//    }
+//}
 
 extension ClosureParameterClauseSyntax {
     

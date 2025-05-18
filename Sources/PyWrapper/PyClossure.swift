@@ -17,11 +17,20 @@ public class PyClossure {
     
     var funcThrows: Bool
     
-    public init(par_count: Int, callExpr: FunctionCallExprSyntax, argsThrows: Bool = true, funcThrows: Bool = false) {
+    var no_self: Bool
+    
+    var return_type: TypeSyntax?
+    
+    var ex_parameters: [String]
+    
+    public init(par_count: Int, callExpr: FunctionCallExprSyntax, argsThrows: Bool = true, funcThrows: Bool = false, no_self: Bool = false, return_type: TypeSyntax? = nil, ex_parameters: [String] = []) {
         self.par_count = par_count
         self.callExpr = callExpr
         self.argsThrows = argsThrows
         self.funcThrows = funcThrows
+        self.no_self = no_self
+        self.return_type = return_type
+        self.ex_parameters = ex_parameters
     }
     
     
@@ -33,29 +42,48 @@ extension PyClossure {
         .init {
             switch par_count {
             case 0:
-                ConditionElementSyntax(condition: .expression(" let __self__"), trailingTrivia: .space)
+                if !no_self {
+                    ConditionElementSyntax(condition: .expression(" let __self__"), trailingTrivia: .space)
+                }
             case 1:
-                ConditionElementSyntax(condition: .expression(" let __self__"))
-                ConditionElementSyntax(condition: .expression(" let __arg__"), trailingTrivia: .space)
+                if !no_self {
+                    ConditionElementSyntax(condition: .expression(" let __self__"))
+                }
+                
+                if let parameter = ex_parameters.first {
+                    ConditionElementSyntax(condition: .expression(parameter.expr), trailingTrivia: .space)
+                } else {
+                    ConditionElementSyntax(condition: .expression(" let __arg__"), trailingTrivia: .space)
+                }
             default:
                 ConditionElementSyntax(condition: .expression(" nargs == \(raw: par_count)"))
-                ConditionElementSyntax(condition: .expression(" let __self__"))
+                if !no_self {
+                    ConditionElementSyntax(condition: .expression(" let __self__"))
+                }
                 ConditionElementSyntax(condition: .expression(" let __args__"), trailingTrivia: .space)
+                for par in ex_parameters {
+                    ConditionElementSyntax(condition: .expression(par.expr), trailingTrivia: .space)
+                }
             }
+            
         }
     }
     
     var extracts: GuardStmtSyntax {
        // .init(conditions: extracts_conditions, elseKeyword: .poundElseToken(leadingTrivia: .newline), body: .init {} )
-        .init(conditions: extracts_conditions) {
-            "return nil"
-        }
+            .init(conditions: extracts_conditions) {
+                "return nil"
+            }
     }
 }
 
 extension PyClossure {
     private var parameters: ClosureParameterListSyntax {.init {
-        "__self__"
+        if no_self {
+            "_"
+        } else {
+            "__self__"
+        }
         switch par_count {
         case 0: 
             "_"
@@ -67,18 +95,38 @@ extension PyClossure {
     }}
     
     private var signature: ClosureSignatureSyntax {
-        return .init(parameterClause: .parameterClause(.init(parameters: parameters)))
+        return .init(parameterClause: .parameterClause(.init(parameters: parameters)), returnClause: .init(type: TypeSyntax.optPyPointer))
     }
     
     private var statements: CodeBlockItemListSyntax {
+        let call: ExprSyntaxProtocol = if funcThrows {
+            TryExprSyntax(expression: callExpr)
+        } else {
+            callExpr
+        }
         let body: CodeBlockSyntax = .init {
-            extracts
-            if funcThrows {
-                TryExprSyntax(expression: callExpr)
+            if no_self && par_count == 0 {
+                
             } else {
-                callExpr
+                extracts
             }
-            "return .None"
+            if let return_type {
+                let rtn_call: ExprSyntaxProtocol = switch return_type.kind {
+                case .optionalType:
+                    MemberAccessExprSyntax(base: OptionalChainingExprSyntax(expression: call), name: .identifier("pyPointer"))
+                default:
+                    if return_type.isPyPointer {
+                        call
+                    } else {
+                        MemberAccessExprSyntax(base: call, name: .identifier("pyPointer"))
+                    }
+                }
+                    
+                ReturnStmtSyntax(expression: rtn_call)
+            } else {
+                call
+                "return .None"
+            }
         }
         return .init {
             

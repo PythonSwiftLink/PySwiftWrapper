@@ -14,11 +14,16 @@ public struct PyTypeObjectStruct {
     let name: String
     let bases: [PyClassBase]
     let unretained: Bool
+    let hasMethods: Bool
+    let hasGetSets: Bool
     
-    public init(name: String, bases: [PyClassBase], unretained: Bool = false) {
+    
+    public init(name: String, bases: [PyClassBase], unretained: Bool = false, hasMethods: Bool, hasGetSets: Bool) {
         self.name = name
         self.bases = bases
         self.unretained = unretained
+        self.hasMethods = hasMethods
+        self.hasGetSets = hasGetSets
     }
     
 }
@@ -44,7 +49,7 @@ extension PyTypeObjectStruct {
         case .ob_base:
             ".init()".expr
         case .tp_name:
-            "".cString()
+            name.cString()
         case .tp_basicsize:
             "MemoryLayout<PySwiftObject>.stride".expr
         case .tp_itemsize:
@@ -62,7 +67,7 @@ extension PyTypeObjectStruct {
         case .tp_as_async:
             bases.contains(.async) ? ".init(&\(name).\(label))".expr : nil
         case .tp_repr:
-            nil
+            bases.contains(.repr) ? "unsafeBitCast(\(name).\(label), to: reprfunc.self)".expr : nil
         case .tp_as_number:
             bases.contains(.number) ? ".init(&\(name).\(label))".expr : nil
         case .tp_as_sequence:
@@ -70,17 +75,17 @@ extension PyTypeObjectStruct {
         case .tp_as_mapping:
             bases.contains(.mapping) ? ".init(&\(name).\(label))".expr : nil
         case .tp_hash:
-            nil
+            bases.contains(.hash) ? "unsafeBitCast(\(name).\(label), to: hashfunc.self)".expr : nil
         case .tp_call:
             nil
         case .tp_str:
-            nil
+            bases.contains(.str) ? "unsafeBitCast(\(name).\(label), to: reprfunc.self)".expr : nil
         case .tp_getattro:
             nil
         case .tp_setattro:
             nil
         case .tp_as_buffer:
-            nil
+            bases.contains(.buffer) ? "\(name).buffer_procs()".expr : nil
         case .tp_flags:
             "NewPyObjectTypeFlag.DEFAULT".expr
         case .tp_doc:
@@ -98,11 +103,11 @@ extension PyTypeObjectStruct {
         case .tp_iternext:
             nil
         case .tp_methods:
-            ".init(&PyMethodDefs)".expr
+            hasMethods ? ".init(&PyMethodDefs)".expr : nil
         case .tp_members:
             nil
         case .tp_getset:
-            nil
+            hasGetSets ? ".init(&PyGetSetDefs)".expr : nil
         case .tp_base:
             nil
         case .tp_dict:
@@ -174,6 +179,24 @@ extension PyTypeObjectStruct {
             leftParen: .leftParenToken(),//(trailingTrivia: .newline), //.appending(.tab)
             arguments: arguments.with(\.leadingTrivia, .newline),
             rightParen: .rightParenToken(leadingTrivia: .newline)
+        )
+    }
+    
+    public func createPyType() -> VariableDeclSyntax {
+        return .init(
+            modifiers: [ .public, .static], .let,
+            name: .init(stringLiteral: "PyType"),
+            type: .init(type: TypeSyntax(stringLiteral: "UnsafeMutablePointer<PyTypeObject>")),
+            initializer: .init(value: ExprSyntax(stringLiteral: """
+            {
+                let t: UnsafeMutablePointer<PyTypeObject> = .init(&pyTypeObject)
+                if PyType_Ready(t) < 0 {
+                    PyErr_Print()
+                    fatalError("PyReady failed")
+                }
+                return t
+            }()
+            """)).with(\.trailingTrivia, .newlines(2))
         )
     }
 }

@@ -110,7 +110,7 @@ struct PyNumberMethodsGenerator {
     }
     
     var variDecl: VariableDeclSyntax {
-        let call = FunctionCallExprSyntax(callee: ".init".expr) {
+        let call = FunctionCallExprSyntax(callee: ".PySwiftMethods".expr) {
             let methods = methods
             let size = methods.count - 1
             for (i, method) in methods.enumerated() {
@@ -132,7 +132,7 @@ struct PyNumberMethodsGenerator {
         }.with(\.rightParen, .rightParenToken(leadingTrivia: .newline))
         return .init(
             leadingTrivia: .lineComment("// #### PyNumberMethods ####").appending(.newlines(2) as Trivia),
-            modifiers: [.fileprivate, .static], .var,
+            modifiers: [.static], .var,
             name: .init(stringLiteral: "tp_as_number"),
             type: .init(type: TypeSyntax(stringLiteral: "PyNumberMethods")),
             initializer: .init(value: call)
@@ -146,18 +146,20 @@ protocol PyNumberMethodProtocol {
     var cls: String { get }
     var type: PyType_typedefs { get }
     func closureExpr() -> ClosureExprSyntax
-    func _protocol() -> FunctionDeclSyntax?
+    //func _protocol() -> FunctionDeclSyntax?
 }
 
 extension PyNumberMethodProtocol {
     func labeledExpr() -> LabeledExprSyntax {
         //label.asLabeledExpr(closureExpr())
-        label.asLabeledExpr(unsafeBitCast(pymethod: closureExpr(), from: "PySwift_\(type)", to: "\(type).self"))
+       // label.asLabeledExpr(unsafeBitCast(pymethod: closureExpr(), from: "PySwift_\(type)", to: "\(type).self"))
+        label.asLabeledExpr(closureExpr())
     }
 }
 
 fileprivate func unPackSelf(_ cls: String, arg: String = "__self__") -> ExprSyntax {
-    .UnPackPySwiftObject(cls, arg: arg)
+    //.UnPackPySwiftObject(cls, arg: arg)
+    "Unmanaged<\(raw: cls)>.fromOpaque(\(raw: arg).pointee.swift_ptr).takeUnretainedValue()"
 }
 
 extension PyNumberMethodsGenerator {
@@ -169,18 +171,11 @@ extension PyNumberMethodsGenerator {
         func closureExpr() -> ClosureExprSyntax {
             .binaryfunc {
                 """
-                if let s {
-                    \(raw: unPackSelf(cls)).__\(raw: label)__(o)
+                if let __self__, let o {
+                    \(raw: unPackSelf(cls)).\(raw: label)(o)
                 } else { nil }
                 """
-                "return nil"
             }
-        }
-        
-        func _protocol() -> FunctionDeclSyntax? {
-            try! .init("""
-            func __\(raw: label)__(_ other: PyPointer?) -> PyPointer?
-            """)
         }
     }
     
@@ -192,17 +187,11 @@ extension PyNumberMethodsGenerator {
         func closureExpr() -> ClosureExprSyntax {
             .ternaryfunc {
                 """
-                if let s {
-                    \(raw: unPackSelf(cls)).__\(raw: label)__(o, kw)
+                if let __self__, let o {
+                    \(raw: unPackSelf(cls)).\(raw: label)(o, kw)
                 } else { nil }
                 """
             }
-        }
-        
-        func _protocol() -> FunctionDeclSyntax? {
-            try! .init("""
-            func __\(raw: label)__(_ other: PyPointer?,_ kw: PyPointer?) -> PyPointer?
-            """)
         }
     }
     
@@ -214,17 +203,11 @@ extension PyNumberMethodsGenerator {
         func closureExpr() -> ClosureExprSyntax {
             .unaryfunc {
                 """
-                if let s {
-                    \(raw: unPackSelf(cls)).__\(raw: label)__()
+                if let __self__ {
+                    \(raw: unPackSelf(cls)).\(raw: label)()
                 } else { nil }
                 """
             }
-        }
-        
-        func _protocol() -> FunctionDeclSyntax? {
-            try! .init("""
-            func __\(raw: label)__() -> PyPointer?
-            """)
         }
     }
     
@@ -237,17 +220,11 @@ extension PyNumberMethodsGenerator {
         func closureExpr() -> ClosureExprSyntax {
             .inquiry {
                 """
-                if let s {
-                    \(raw: unPackSelf(cls)).__\(raw: label)__()
+                if let __self__ {
+                    \(raw: unPackSelf(cls)).\(raw: label)()
                 } else { 0 }
                 """
             }
-        }
-        
-        func _protocol() -> FunctionDeclSyntax? {
-            try! .init("""
-            func __\(raw: label)__() -> Int32
-            """)
         }
     }
     
@@ -260,16 +237,12 @@ extension PyNumberMethodsGenerator {
         func closureExpr() -> ClosureExprSyntax {
             .void {
                 """
-                if let s {
-                    \(raw: unPackSelf(cls)).__\(raw: label)__()
+                if let __self__ {
+                    \(raw: unPackSelf(cls)).\(raw: label)()
                 }
                 """
                 //"return 0"
             }
-        }
-        
-        func _protocol() -> FunctionDeclSyntax? {
-            nil
         }
     }
 }

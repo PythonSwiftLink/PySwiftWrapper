@@ -50,3 +50,41 @@ func unsafeBitCast(pymethod: ClosureExprSyntax, from type: String, to: String) -
         rightParen: .rightParenToken(leadingTrivia: .newline)
     )
 }
+
+
+func PyObject_Vectorcall(call: String, args: String, nargs: Int) -> FunctionCallExprSyntax {
+    .init(
+        calledExpression: DeclReferenceExprSyntax(baseName: .identifier("PyObject_Vectorcall")),
+        leftParen: .leftParenToken(),
+        arguments: .init {
+            LabeledExprSyntax(expression: call.expr)
+            LabeledExprSyntax(expression: args.expr)
+            LabeledExprSyntax(expression: nargs.makeLiteralSyntax())
+            LabeledExprSyntax(expression: NilLiteralExprSyntax())
+        },
+        rightParen: .rightParenToken()
+    )
+}
+
+func PyObject_CallOneArg(call: String, arg: String) -> FunctionCallExprSyntax {
+    .init(
+        calledExpression: DeclReferenceExprSyntax(baseName: .identifier("PyObject_CallOneArg")),
+        leftParen: .leftParenToken(),
+        arguments: .init {
+            LabeledExprSyntax(expression: call.expr)
+            LabeledExprSyntax(expression: arg.expr)
+        },
+        rightParen: .rightParenToken()
+    )
+}
+
+func PyObject_CallNoArgs(call: String) -> FunctionCallExprSyntax {
+    .init(
+        calledExpression: DeclReferenceExprSyntax(baseName: .identifier("PyObject_CallNoArgs")),
+        leftParen: .leftParenToken(),
+        arguments: .init {
+            LabeledExprSyntax(expression: call.expr)
+        },
+        rightParen: .rightParenToken()
+    )
+}

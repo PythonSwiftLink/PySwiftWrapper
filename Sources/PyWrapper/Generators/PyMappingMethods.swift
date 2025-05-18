@@ -57,7 +57,8 @@ struct PyMappingMethodsGenerator {
 }
 
 fileprivate func unPackSelf(_ cls: String, arg: String = "__self__") -> ExprSyntax {
-    .UnPackPySwiftObject(cls, arg: arg)
+    //.UnPackPySwiftObject(cls, arg: arg)
+    "Unmanaged<\(raw: cls)>.fromOpaque(\(raw: arg).pointee.swift_ptr).takeUnretainedValue()"
 }
 
 extension PyMappingMethodsGenerator {
@@ -115,7 +116,7 @@ extension PyMappingMethodsGenerator {
         func closureExpr() -> ClosureExprSyntax {
             .objobjargproc {
                 """
-                if let __self__ {
+                if let __self__, let x {
                     \(raw: unPackSelf(cls)).__setitem__(x, y)
                 } else { 0 }
                 """

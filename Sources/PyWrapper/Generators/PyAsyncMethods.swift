@@ -27,6 +27,7 @@ struct PyAsyncMethodsGenerator {
     
     var variDecl: VariableDeclSyntax {
         let call = FunctionCallExprSyntax(callee: ".init".expr) {
+           // "am_await".asLabeledExpr(NilLiteralExprSyntax()).with(\.leadingTrivia, .newline).newLineTab
             _am_await(cls: cls).labeledExpr().with(\.leadingTrivia, .newline).newLineTab
             _am_aiter(cls: cls).labeledExpr().newLineTab
             _am_anext(cls: cls).labeledExpr().newLineTab
@@ -35,7 +36,7 @@ struct PyAsyncMethodsGenerator {
         
         return .init(
             leadingTrivia: .lineComment("// #### PyAsyncMethods ####").appending(.newlines(2) as Trivia),
-            modifiers: [.fileprivate, .static], .var,
+            modifiers: [.static], .var,
             name: .init(stringLiteral: "tp_as_async"),
             type: .init(type: TypeSyntax(stringLiteral: "PyAsyncMethods")),
             initializer: .init(value: call)
@@ -73,7 +74,8 @@ extension PyAsyncMethodProtocol {
     var swift_type: String { "PySwift_\(type)" }
 }
 fileprivate func unPackSelf(_ cls: String, arg: String = "__self__") -> ExprSyntax {
-    .UnPackPySwiftObject(cls, arg: arg)
+    //.UnPackPySwiftObject(cls, arg: arg)
+    "Unmanaged<\(raw: cls)>.fromOpaque(\(raw: arg).pointee.swift_ptr).takeUnretainedValue()"
 }
 extension PyAsyncMethodsGenerator {
     
@@ -89,7 +91,7 @@ extension PyAsyncMethodsGenerator {
             .unaryfunc {
                 """
                 if let __self__ {
-                    \(raw: unPackSelf(cls)).__am_await__()
+                    \(raw: unPackSelf(cls)).__am_await__(_self_: __self__)
                 } else { nil }
                 """
             }
@@ -111,7 +113,7 @@ extension PyAsyncMethodsGenerator {
             .unaryfunc {
                 """
                 if let __self__ {
-                    \(raw: unPackSelf(cls)).__am_aiter__()
+                    \(raw: unPackSelf(cls)).__am_aiter__(_self_: __self__)
                 } else { nil }
                 """
             }
@@ -133,7 +135,7 @@ extension PyAsyncMethodsGenerator {
             .unaryfunc {
                 """
                 if let __self__ {
-                    \(raw: unPackSelf(cls)).__am_anext__()
+                    \(raw: unPackSelf(cls)).__am_anext__(_self_: __self__)
                 } else { nil }
                 """
             }
@@ -154,8 +156,8 @@ extension PyAsyncMethodsGenerator {
         func closureExpr() -> ClosureExprSyntax {
             .sendfunc {
                 """
-                if let __self__ {
-                    \(raw: unPackSelf(cls)).__am_send__(__args__, kw).result()
+                if let __self__, let args {
+                    \(raw: unPackSelf(cls)).__am_send__(args, kw).result()
                 } else { PYGEN_ERROR }
                 """
             }

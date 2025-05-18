@@ -72,18 +72,31 @@ extension Array where Element == FunctionParameterSyntax {
     }
 }
 
-extension FunctionParameterSyntax {
+extension TypeSyntax {
     var canThrow: Bool {
-        switch type.description {
-        case "PyPointer": false
-        default: true
+        if isPyPointer { return false }
+        return self.trimmedDescription != "Void"
+    }
+    var isPyPointer: Bool {
+        switch self.trimmedDescription {
+        case "PyPointer", "PyPointer?": true
+        default: false
         }
-        
+    }
+}
+
+extension FunctionParameterSyntax {
+    var canThrow: Bool { type.canThrow }
+}
+
+extension ReturnClauseSyntax {
+    var canThrow: Bool {
+        type.canThrow
     }
 }
 
 extension FunctionDeclSyntax {
     var `throws`: Bool {
-        signature.effectSpecifiers?.throwsSpecifier != nil
+        signature.effectSpecifiers?.throwsClause?.throwsSpecifier != nil
     }
 }
