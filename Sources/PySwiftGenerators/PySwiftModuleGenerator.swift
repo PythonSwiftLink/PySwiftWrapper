@@ -135,7 +135,7 @@ extension PySwiftModuleGenerator: ExtensionMacro {
         let classes = classes_decl?.bindings.first?.initializer?.value.as(ArrayExprSyntax.self)?.elements.compactMap({ element in
             element.expression.as(MemberAccessExprSyntax.self)!.base!.as(DeclReferenceExprSyntax.self)!.baseName.text
         }) ?? []
-        guard classes_decl != nil else { throw PyModuleError.classes(classes.description) }
+        //guard classes_decl != nil else { throw PyModuleError.classes(classes.description) }
         let addTypes = Array( classes.map({cls in "PyModule_AddType(m, \(cls).PyType)"})).joined(separator: "\n")
         
         return [

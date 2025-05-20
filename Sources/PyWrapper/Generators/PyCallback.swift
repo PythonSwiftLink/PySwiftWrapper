@@ -18,6 +18,7 @@ public class PyCallGenerator {
     //let function: FunctionDeclSyntax
     let call_name: String
     var canThrow: Bool
+    var funcThrows: Bool
     var gil: Bool
     
     public init(function: FunctionDeclSyntax, gil: Bool) {
@@ -30,6 +31,7 @@ public class PyCallGenerator {
         arg_count = parameters.count
         let rtn = signature.returnClause
         canThrow = function.throws
+        funcThrows = function.throws
         if let rtn {
             returnType = rtn.type
             if rtn.canThrow {
@@ -134,7 +136,11 @@ extension PyCallGenerator {
                     "PyGILState_Release(gil)"
                 }
                 if let returnType {
-                    "fatalError()"
+                    if funcThrows {
+                        "throw PyStandardException.typeError"
+                    } else {
+                        "fatalError()"
+                    }
                 } else {
                     "return"
                 }
@@ -169,7 +175,13 @@ extension PyCallGenerator {
         .init {
             if canThrow {
                 DoStmtSyntax(body: .init(statements: code), catchClauses: .standardPyCatchClauses)
-                
+                if returnType != nil {
+                    if funcThrows {
+                        "throw PyStandardException.typeError"
+                    } else {
+                        "fatalError()"
+                    }
+                }
             } else {
                 code
             }
