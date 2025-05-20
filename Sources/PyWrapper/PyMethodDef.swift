@@ -21,7 +21,7 @@ public struct PyMethodDefGenerator {
     public init(target: String, f: FunctionDeclSyntax, module_or_class: Bool = false) {
         self.f = f
         self.module_or_class = module_or_class
-        let parameters = f.signature.parameterClause.parameters.map(\.self)
+        let parameters = Array(f.signature.parameterClause.parameters)
         let nargs = parameters.count
         let multi = nargs > 1
         
