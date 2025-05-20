@@ -98,7 +98,7 @@ struct PyCallFiller: BodyMacro {
         guard let fdecl = declaration.as(FunctionDeclSyntax.self) else { return [] }
         let info = PyCallArguments(node: node)
         let pycall = PyCallGenerator.init(function: fdecl, gil: info.gil)
-        return pycall.output.map(\.self)
+        return .init(pycall.output)
 //
 //        return ["""
 //        do \(raw: pycall.output)
