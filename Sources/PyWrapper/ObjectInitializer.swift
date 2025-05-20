@@ -17,7 +17,7 @@ public class ObjectInitializer {
         if let decl {
             pyInit = true
             let signature = decl.signature
-            let parameters = signature.parameterClause.parameters.map(\.self)
+            let parameters = Array(signature.parameterClause.parameters)
             self.parameters = parameters
             if
                 signature.effectSpecifiers?.throwsClause != nil,
